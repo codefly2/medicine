@@ -1,8 +1,8 @@
-# Import necessary libraries
 import streamlit as st
 from gtts import gTTS
 from typing import List
 from langchain.llms import OpenAI
+import langchain_community
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.agents import (
     tool,
@@ -12,49 +12,27 @@ from langchain.agents import (
 from langchain.callbacks import StreamlitCallbackHandler
 from langchain.chat_models import ChatOpenAI
 from langchain.tools import DuckDuckGoSearchRun
-from metaphor_python import Metaphor
 
 
 # Setup the Streamlit page
 st.set_page_config(page_title="PhramaConnect", page_icon="🤖", layout="wide")
 st.header("🤖 PhramaConnect : Medicines made simple!", divider="rainbow")
 
-OPENAI_API_KEY = "YOUR_OPENAI_API_KEY"
-metaphor = Metaphor("YOUR_METAPHOR_API_KEY")
+OPENAI_API_KEY = "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"
 resultant_response = ""
 
 
-# Define a function to call search engines with a query
+# Define a function to call DuckDuckGo search engine with a query
 @tool
-def metaphor_search(query: str):
-    """Call search engine with a query on medicines and medication."""
-    return metaphor.search(query, use_autoprompt=True, num_results=5)
-
-
-# Define a function to get contents of a webpage using IDs obtained from metaphor_search()
-@tool
-def get_contents_using_metaphor(ids: List[str]):
-    """Get contents of a webpage.
-
-    The ids passed in should be a list of ids as fetched from `search`.
-    """
-    return metaphor.get_contents(ids)
-
-
-# Define a function to get search results similar to a given URL obtained from metaphor_search()
-@tool
-def find_similar_using_metaphor(url: str):
-    """Get search results similar to a given URL.
-
-    The url passed in should be a URL returned from `search`
-    """
-    return metaphor.find_similar(url, num_results=5)
+def duckduckgo_search(query: str):
+    """Call DuckDuckGo search engine with a query on medicines and medication."""
+    return DuckDuckGoSearchRun().run(query)
 
 
 # Setup the first chat
 if "messages" not in st.session_state:
     st.session_state["messages"] = [
-        {"role": "assistant", "content": "How can I help you?"},
+        {"role": "assistant", "content": "How can I help you?"}
     ]
 
 for msg in st.session_state.messages:
@@ -67,7 +45,7 @@ if text_input:
 
     # Initialize the input prompts
     system_message = SystemMessage(
-        content="You are a helpful pharmaceutical cum medical assistant that prvides accurate and reliable information about medicines from trusted sources. You clearly explain the up-to-date information of medicines that the user asks about. Give detailed answers with visually-appealing titles and section divisions. Use these websites for more details on medications: Centers for Disease Control and Prevention, ClinicalTrials.gov, Food and Drug Administration, National Cancer Institute, National Institutes of Health, National Library of Medicine, World Health Organization, Indian Medical Association, VoxHealth, Truven Health Analytics, Harvard Medical School, https://www.drugs.com/fda-consumer, https://www.webmd.com/drugs/2/index, https://medlineplus.gov/"
+        content="You are a helpful pharmaceutical cum medical assistant that provides accurate and reliable information about medicines from trusted sources. You clearly explain the up-to-date information of medicines that the user asks about. Give detailed answers with visually-appealing titles and section divisions. Use these websites for more details on medications: Centers for Disease Control and Prevention, ClinicalTrials.gov, Food and Drug Administration, National Cancer Institute, National Institutes of Health, National Library of Medicine, World Health Organization, Indian Medical Association, VoxHealth, Truven Health Analytics, Harvard Medical School, https://www.drugs.com/fda-consumer, https://www.webmd.com/drugs/2/index, https://medlineplus.gov/"
     )
     human_message = HumanMessage(
         content="Give a detailed description about the name, brand names, active ingredients, uses, side-effects, adverse reactions, potential drug interactions with other medications, foods, or substances, precautions and dosage forms of the medicine: "
@@ -84,15 +62,12 @@ if text_input:
     )
 
     tools = [
-        DuckDuckGoSearchRun(name="Search"),
-        metaphor_search,
-        get_contents_using_metaphor,
-        find_similar_using_metaphor,
+        duckduckgo_search,
     ]
     prompt = OpenAIFunctionsAgent.create_prompt(system_message=system_message)
     agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt)
 
-    # Initialize the response agent with Metaphor and OpenAI
+    # Initialize the response agent with OpenAI
     response_agent = AgentExecutor(
         agent=agent,
         tools=tools,
